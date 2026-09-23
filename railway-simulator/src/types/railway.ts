@@ -4,7 +4,9 @@ export type Direction =
 
 export type TrainState =
   | "RUNNING"
-  | "STOPPED";
+  | "STOPPED"
+  | "SLOWING"
+  | "HOLDING";
 
 export type TrainType =
   | "LOCAL"
@@ -19,7 +21,7 @@ export interface Train {
   type: TrainType;
 
   /**
-   * 0   = Patna Jn
+   * 0   = Patna
    * 100 = Bakhtiyarpur
    */
   position: number;
@@ -27,21 +29,58 @@ export interface Train {
   direction: Direction;
 
   /**
-   * Maximum/current speed for now.
-   * Later we'll distinguish:
+   * Maximum permitted speed for this train.
+   */
+  maxSpeed: number;
+
+  /**
+   * Current actual speed.
    *
-   * maxSpeed
-   * targetSpeed
-   * currentSpeed
+   * This is what will eventually be controlled
+   * by the scheduling algorithm.
    */
   speed: number;
 
   state: TrainState;
 
-  /**
-   * Remaining station dwell time.
-   */
   stationStopRemaining: number;
 
   color: string;
+
+  /**
+   * Block currently occupied by the train.
+   */
+  currentBlockId: string | null;
+}
+
+export interface TrackBlock {
+  id: string;
+
+  /**
+   * Position range along the corridor.
+   *
+   * Example:
+   * B1 = 0 → 20
+   * B2 = 20 → 40
+   */
+  start: number;
+  end: number;
+
+  /**
+   * Maximum permitted speed inside this block.
+   */
+  speedLimit: number;
+
+  /**
+   * Train currently occupying the block.
+   */
+  occupiedBy: string | null;
+
+  /**
+   * 0 → no bottleneck
+   * 100 → extremely severe
+   */
+  severity: number;
+
+  isBottleneck?: boolean;
 }

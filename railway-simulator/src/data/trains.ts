@@ -11,13 +11,17 @@ export const INITIAL_TRAINS: Train[] = [
 
     direction: "TO_BAKHTIYARPUR",
 
-    speed: 80,
+    maxSpeed: 110,
+
+    speed: 110,
 
     state: "STOPPED",
 
     stationStopRemaining: 2,
 
     color: "#22d3ee",
+
+    currentBlockId: "B1",
   },
 
   {
@@ -30,13 +34,17 @@ export const INITIAL_TRAINS: Train[] = [
 
     direction: "TO_PATNA",
 
-    speed: 85,
+    maxSpeed: 110,
+
+    speed: 110,
 
     state: "STOPPED",
 
     stationStopRemaining: 2,
 
     color: "#f59e0b",
+
+    currentBlockId: "B5",
   },
 
   {
@@ -49,13 +57,17 @@ export const INITIAL_TRAINS: Train[] = [
 
     direction: "TO_BAKHTIYARPUR",
 
-    speed: 120,
+    maxSpeed: 130,
+
+    speed: 130,
 
     state: "RUNNING",
 
     stationStopRemaining: 0,
 
     color: "#a78bfa",
+
+    currentBlockId: "B2",
   },
 
   {
@@ -64,16 +76,20 @@ export const INITIAL_TRAINS: Train[] = [
 
     type: "SUPERFAST",
 
-    position: 75,
+    position: 90,
 
     direction: "TO_PATNA",
 
-    speed: 120,
+    maxSpeed: 130,
+
+    speed: 130,
 
     state: "RUNNING",
 
     stationStopRemaining: 0,
 
     color: "#34d399",
+
+    currentBlockId: "B4",
   },
 ];

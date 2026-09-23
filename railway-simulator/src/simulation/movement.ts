@@ -1,4 +1,7 @@
-import type { Train } from "../types/railway";
+import type {
+  TrackBlock,
+  Train,
+} from "../types/railway";
 
 import {
   PATNA_POSITION,
@@ -10,24 +13,32 @@ import {
 export function updateTrainMovement(
   train: Train,
   deltaSeconds: number,
-  simulationSpeed: number
+  simulationSpeed: number,
+  blocks: TrackBlock[]
 ): Train {
   const nextTrain: Train = {
     ...train,
   };
 
   /*
-   * ------------------------------------------
-   * TRAIN IS STOPPED AT A STATION
-   * ------------------------------------------
+   * -----------------------------------------
+   * STOPPED
+   * -----------------------------------------
    */
 
-  if (nextTrain.state === "STOPPED") {
+  if (
+    nextTrain.state === "STOPPED"
+  ) {
     nextTrain.stationStopRemaining -=
-      deltaSeconds * simulationSpeed;
+      deltaSeconds *
+      simulationSpeed;
 
-    if (nextTrain.stationStopRemaining <= 0) {
+    if (
+      nextTrain.stationStopRemaining <=
+      0
+    ) {
       nextTrain.stationStopRemaining = 0;
+
       nextTrain.state = "RUNNING";
     }
 
@@ -35,9 +46,40 @@ export function updateTrainMovement(
   }
 
   /*
-   * ------------------------------------------
-   * TRAIN IS MOVING
-   * ------------------------------------------
+   * -----------------------------------------
+   * CURRENT BLOCK
+   * -----------------------------------------
+   */
+
+  const currentBlock =
+    blocks.find(
+      (block) =>
+        nextTrain.position >=
+          block.start &&
+        nextTrain.position <=
+          block.end
+    );
+
+  /*
+   * Train cannot exceed the block's
+   * speed restriction.
+   */
+
+  const permittedSpeed =
+    currentBlock
+      ? Math.min(
+          nextTrain.maxSpeed,
+          currentBlock.speedLimit
+        )
+      : nextTrain.maxSpeed;
+
+  nextTrain.speed =
+    permittedSpeed;
+
+  /*
+   * -----------------------------------------
+   * MOVEMENT
+   * -----------------------------------------
    */
 
   const directionMultiplier =
@@ -53,12 +95,13 @@ export function updateTrainMovement(
     simulationSpeed;
 
   nextTrain.position +=
-    movement * directionMultiplier;
+    movement *
+    directionMultiplier;
 
   /*
-   * ------------------------------------------
-   * REACHED BAKHTIYARPUR
-   * ------------------------------------------
+   * -----------------------------------------
+   * BAKHTIYARPUR
+   * -----------------------------------------
    */
 
   if (
@@ -70,23 +113,29 @@ export function updateTrainMovement(
     nextTrain.position =
       BAKHTIYARPUR_POSITION;
 
-    nextTrain.direction = "TO_PATNA";
+    nextTrain.direction =
+      "TO_PATNA";
 
-    nextTrain.state = "STOPPED";
+    nextTrain.state =
+      "STOPPED";
 
     nextTrain.stationStopRemaining =
       STATION_STOP_SECONDS;
+
+    nextTrain.speed = 0;
   }
 
   /*
-   * ------------------------------------------
-   * REACHED PATNA
-   * ------------------------------------------
+   * -----------------------------------------
+   * PATNA
+   * -----------------------------------------
    */
 
   if (
-    nextTrain.direction === "TO_PATNA" &&
-    nextTrain.position <= PATNA_POSITION
+    nextTrain.direction ===
+      "TO_PATNA" &&
+    nextTrain.position <=
+      PATNA_POSITION
   ) {
     nextTrain.position =
       PATNA_POSITION;
@@ -94,10 +143,13 @@ export function updateTrainMovement(
     nextTrain.direction =
       "TO_BAKHTIYARPUR";
 
-    nextTrain.state = "STOPPED";
+    nextTrain.state =
+      "STOPPED";
 
     nextTrain.stationStopRemaining =
       STATION_STOP_SECONDS;
+
+    nextTrain.speed = 0;
   }
 
   return nextTrain;

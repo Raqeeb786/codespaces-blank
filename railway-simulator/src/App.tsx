@@ -1,7 +1,8 @@
-import { SimulationControls } from "./components/SimulationControls";
 import { RailwayView } from "./components/RailwayView";
+import { SimulationControls } from "./components/SimulationControls";
 import { TrainCard } from "./components/TrainCard";
 
+import { INITIAL_BLOCKS } from "./data/blocks";
 import { INITIAL_TRAINS } from "./data/trains";
 
 import { useRailwaySimulation } from "./hooks/useRailwaySimulation";
@@ -9,6 +10,7 @@ import { useRailwaySimulation } from "./hooks/useRailwaySimulation";
 function App() {
   const {
     trains,
+    blocks,
     running,
     simulationSpeed,
     setSimulationSpeed,
@@ -18,7 +20,16 @@ function App() {
   } = useRailwaySimulation({
     initialTrains:
       INITIAL_TRAINS,
+
+    initialBlocks:
+      INITIAL_BLOCKS,
   });
+
+  const occupiedBlocks =
+    blocks?.filter(
+      (block) =>
+        block.occupiedBy !== null
+    ).length;
 
   return (
     <main className="min-h-screen bg-[#080c12] px-4 py-8 text-slate-100">
@@ -28,7 +39,7 @@ function App() {
 
         <header className="mb-6">
           <p className="text-sm font-medium text-cyan-400">
-            INDIA RAILWAY SIMULATOR · MVP 02
+            INDIA RAILWAY SIMULATOR · MVP 03
           </p>
 
           <h1 className="mt-1 text-3xl font-bold">
@@ -36,8 +47,8 @@ function App() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-400">
-            Multiple trains running simultaneously
-            through the same railway corridor.
+            Multi-train railway corridor with
+            block occupancy and speed restrictions.
           </p>
         </header>
 
@@ -63,6 +74,7 @@ function App() {
 
         <RailwayView
           trains={trains}
+          blocks={blocks}
         />
 
         {/* TRAIN CARDS */}
@@ -76,11 +88,11 @@ function App() {
           ))}
         </section>
 
-        {/* SIMULATION STATE */}
+        {/* INFRASTRUCTURE STATE */}
 
         <section className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-5">
           <h2 className="font-semibold">
-            Simulation state
+            Infrastructure state
           </h2>
 
           <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -90,50 +102,38 @@ function App() {
                 Active trains
               </span>
 
-              <p className="mt-1 font-semibold">
+              <p className="mt-1 text-lg font-semibold">
                 {trains.length}
               </p>
             </div>
 
             <div>
               <span className="text-slate-500">
-                Running
+                Track blocks
               </span>
 
-              <p className="mt-1 font-semibold">
-                {
-                  trains.filter(
-                    (train) =>
-                      train.state ===
-                      "RUNNING"
-                  ).length
-                }
+              <p className="mt-1 text-lg font-semibold">
+                {blocks?.length}
               </p>
             </div>
 
             <div>
               <span className="text-slate-500">
-                Stopped
+                Occupied blocks
               </span>
 
-              <p className="mt-1 font-semibold">
-                {
-                  trains.filter(
-                    (train) =>
-                      train.state ===
-                      "STOPPED"
-                  ).length
-                }
+              <p className="mt-1 text-lg font-semibold">
+                {occupiedBlocks}
               </p>
             </div>
 
             <div>
               <span className="text-slate-500">
-                Simulation
+                Bottleneck
               </span>
 
-              <p className="mt-1 font-semibold text-cyan-400">
-                {simulationSpeed}×
+              <p className="mt-1 text-lg font-semibold text-amber-400">
+                B3
               </p>
             </div>
 
@@ -145,6 +145,173 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import { SimulationControls } from "./components/SimulationControls";
+// import { RailwayView } from "./components/RailwayView";
+// import { TrainCard } from "./components/TrainCard";
+
+// import { INITIAL_TRAINS } from "./data/trains";
+
+// import { useRailwaySimulation } from "./hooks/useRailwaySimulation";
+
+// function App() {
+//   const {
+//     trains,
+//     running,
+//     simulationSpeed,
+//     setSimulationSpeed,
+//     start,
+//     pause,
+//     reset,
+//   } = useRailwaySimulation({
+//     initialTrains:
+//       INITIAL_TRAINS,
+//   });
+
+//   return (
+//     <main className="min-h-screen bg-[#080c12] px-4 py-8 text-slate-100">
+//       <div className="mx-auto max-w-6xl">
+
+//         {/* HEADER */}
+
+//         <header className="mb-6">
+//           <p className="text-sm font-medium text-cyan-400">
+//             INDIA RAILWAY SIMULATOR · MVP 02
+//           </p>
+
+//           <h1 className="mt-1 text-3xl font-bold">
+//             Patna Jn ↔ Bakhtiyarpur
+//           </h1>
+
+//           <p className="mt-2 text-sm text-slate-400">
+//             Multiple trains running simultaneously
+//             through the same railway corridor.
+//           </p>
+//         </header>
+
+//         {/* CONTROLS */}
+
+//         <SimulationControls
+//           running={running}
+//           simulationSpeed={
+//             simulationSpeed
+//           }
+//           onToggleRunning={() =>
+//             running
+//               ? pause()
+//               : start()
+//           }
+//           onReset={reset}
+//           onSpeedChange={
+//             setSimulationSpeed
+//           }
+//         />
+
+//         {/* RAILWAY */}
+
+//         <RailwayView
+//           trains={trains}
+//         />
+
+//         {/* TRAIN CARDS */}
+
+//         <section className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+//           {trains.map((train) => (
+//             <TrainCard
+//               key={train.number}
+//               train={train}
+//             />
+//           ))}
+//         </section>
+
+//         {/* SIMULATION STATE */}
+
+//         <section className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-5">
+//           <h2 className="font-semibold">
+//             Simulation state
+//           </h2>
+
+//           <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+
+//             <div>
+//               <span className="text-slate-500">
+//                 Active trains
+//               </span>
+
+//               <p className="mt-1 font-semibold">
+//                 {trains.length}
+//               </p>
+//             </div>
+
+//             <div>
+//               <span className="text-slate-500">
+//                 Running
+//               </span>
+
+//               <p className="mt-1 font-semibold">
+//                 {
+//                   trains.filter(
+//                     (train) =>
+//                       train.state ===
+//                       "RUNNING"
+//                   ).length
+//                 }
+//               </p>
+//             </div>
+
+//             <div>
+//               <span className="text-slate-500">
+//                 Stopped
+//               </span>
+
+//               <p className="mt-1 font-semibold">
+//                 {
+//                   trains.filter(
+//                     (train) =>
+//                       train.state ===
+//                       "STOPPED"
+//                   ).length
+//                 }
+//               </p>
+//             </div>
+
+//             <div>
+//               <span className="text-slate-500">
+//                 Simulation
+//               </span>
+
+//               <p className="mt-1 font-semibold text-cyan-400">
+//                 {simulationSpeed}×
+//               </p>
+//             </div>
+
+//           </div>
+//         </section>
+//       </div>
+//     </main>
+//   );
+// }
+
+// export default App;
 
 
 
