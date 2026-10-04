@@ -3,6 +3,7 @@ import { SimulationControls } from "./components/SimulationControls";
 import { TrainCard } from "./components/TrainCard";
 
 import { INITIAL_BLOCKS } from "./data/blocks";
+import { INITIAL_TRACKS } from "./data/tracks";
 import { INITIAL_TRAINS } from "./data/trains";
 
 import { useRailwaySimulation } from "./hooks/useRailwaySimulation";
@@ -73,6 +74,7 @@ function App() {
         {/* RAILWAY */}
 
         <RailwayView
+          tracks={INITIAL_TRACKS}
           trains={trains}
           blocks={blocks}
         />

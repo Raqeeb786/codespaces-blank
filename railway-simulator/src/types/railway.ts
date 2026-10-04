@@ -1,3 +1,62 @@
+// export type Direction =
+//   | "TO_BAKHTIYARPUR"
+//   | "TO_PATNA";
+
+// export type TrainState =
+//   | "RUNNING"
+//   | "STOPPED"
+//   | "SLOWING"
+//   | "HOLDING";
+
+// export type TrainType =
+//   | "LOCAL"
+//   | "EXPRESS"
+//   | "SUPERFAST"
+//   | "VANDE_BHARAT";
+
+// export interface Train {
+//   number: string;
+//   name: string;
+
+//   type: TrainType;
+
+//   position: number;
+
+//   direction: Direction;
+
+//   maxSpeed: number;
+//   speed: number;
+
+//   state: TrainState;
+
+//   stationStopRemaining: number;
+
+//   color: string;
+
+//   currentBlockId: string | null;
+// }
+
+// export interface TrackBlock {
+//   id: string;
+
+//   start: number;
+//   end: number;
+
+//   speedLimit: number;
+
+//   OccupiedBy: string | null;
+
+//   severity: number;
+
+//   isBottleneck?: boolean;
+// }
+
+
+
+
+
+
+
 export type Direction =
   | "TO_BAKHTIYARPUR"
   | "TO_PATNA";
@@ -21,24 +80,16 @@ export interface Train {
   type: TrainType;
 
   /**
-   * 0   = Patna
-   * 100 = Bakhtiyarpur
+   * Physical railway track.
+   * Currently all trains use T1.
    */
+  trackId: string;
+
   position: number;
 
   direction: Direction;
 
-  /**
-   * Maximum permitted speed for this train.
-   */
   maxSpeed: number;
-
-  /**
-   * Current actual speed.
-   *
-   * This is what will eventually be controlled
-   * by the scheduling algorithm.
-   */
   speed: number;
 
   state: TrainState;
@@ -47,9 +98,6 @@ export interface Train {
 
   color: string;
 
-  /**
-   * Block currently occupied by the train.
-   */
   currentBlockId: string | null;
 }
 
@@ -57,30 +105,29 @@ export interface TrackBlock {
   id: string;
 
   /**
-   * Position range along the corridor.
-   *
-   * Example:
-   * B1 = 0 → 20
-   * B2 = 20 → 40
+   * Physical railway track this block belongs to.
+   * Currently all blocks use T1.
    */
+  trackId: string;
+
   start: number;
   end: number;
 
-  /**
-   * Maximum permitted speed inside this block.
-   */
   speedLimit: number;
 
   /**
-   * Train currently occupying the block.
+   * Train currently occupying this block.
    */
   occupiedBy: string | null;
 
-  /**
-   * 0 → no bottleneck
-   * 100 → extremely severe
-   */
   severity: number;
 
   isBottleneck?: boolean;
+}
+
+export interface Track {
+  id: string;
+  name: string;
+  fromStation: string;
+  toStation: string;
 }

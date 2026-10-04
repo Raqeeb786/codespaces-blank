@@ -20,6 +20,21 @@ export function TrainCard({
       ? "Bakhtiyarpur"
       : "En route";
 
+  const stateClasses = {
+      RUNNING:
+        "bg-emerald-950 text-emerald-400",
+
+      SLOWING:
+        "bg-yellow-950 text-yellow-400",
+
+      HOLDING:
+        "bg-red-950 text-red-400",
+
+      STOPPED:
+        "bg-amber-950 text-amber-400",
+    };
+
+
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
       <div className="flex items-start justify-between">
@@ -44,10 +59,7 @@ export function TrainCard({
 
         <div
           className={`rounded-full px-2 py-1 text-xs ${
-            train.state ===
-            "RUNNING"
-              ? "bg-emerald-950 text-emerald-400"
-              : "bg-amber-950 text-amber-400"
+            stateClasses[train.state]
           }`}
         >
           {train.state}
