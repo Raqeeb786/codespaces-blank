@@ -1,172 +1,5 @@
-// import type {
-//   TrackBlock,
-//   Train,
-// } from "../types/railway";
-
-// import {
-//   PATNA_POSITION,
-//   BAKHTIYARPUR_POSITION,
-//   POSITION_UNITS_PER_SECOND_AT_80_KMH,
-//   STATION_STOP_SECONDS,
-// } from "./constants";
-
-// export function updateTrainMovement(
-//   train: Train,
-//   deltaSeconds: number,
-//   simulationSpeed: number,
-//   blocks: TrackBlock[]
-// ): Train {
-//   const nextTrain: Train = {
-//     ...train,
-//   };
-
-//   /*
-//    * -----------------------------------------
-//    * STOPPED
-//    * -----------------------------------------
-//    */
-
-//   if (
-//     nextTrain.state === "STOPPED"
-//   ) {
-//     nextTrain.stationStopRemaining -=
-//       deltaSeconds *
-//       simulationSpeed;
-
-//     if (
-//       nextTrain.stationStopRemaining <=
-//       0
-//     ) {
-//       nextTrain.stationStopRemaining = 0;
-
-//       nextTrain.state = "RUNNING";
-//     }
-
-//     return nextTrain;
-//   }
-
-//   /*
-//    * -----------------------------------------
-//    * CURRENT BLOCK
-//    * -----------------------------------------
-//    */
-
-//   const currentBlock =
-//     blocks.find(
-//       (block) =>
-//         nextTrain.position >=
-//           block.start &&
-//         nextTrain.position <=
-//           block.end
-//     );
-
-//   /*
-//    * Train cannot exceed the block's
-//    * speed restriction.
-//    */
-
-//   const permittedSpeed =
-//     currentBlock
-//       ? Math.min(
-//           nextTrain.maxSpeed,
-//           currentBlock.speedLimit
-//         )
-//       : nextTrain.maxSpeed;
-
-//   nextTrain.speed =
-//     permittedSpeed;
-
-//   /*
-//    * -----------------------------------------
-//    * MOVEMENT
-//    * -----------------------------------------
-//    */
-
-//   const directionMultiplier =
-//     nextTrain.direction ===
-//     "TO_BAKHTIYARPUR"
-//       ? 1
-//       : -1;
-
-//   const movement =
-//     (nextTrain.speed / 80) *
-//     POSITION_UNITS_PER_SECOND_AT_80_KMH *
-//     deltaSeconds *
-//     simulationSpeed;
-
-//   nextTrain.position +=
-//     movement *
-//     directionMultiplier;
-
-//   /*
-//    * -----------------------------------------
-//    * BAKHTIYARPUR
-//    * -----------------------------------------
-//    */
-
-//   if (
-//     nextTrain.direction ===
-//       "TO_BAKHTIYARPUR" &&
-//     nextTrain.position >=
-//       BAKHTIYARPUR_POSITION
-//   ) {
-//     nextTrain.position =
-//       BAKHTIYARPUR_POSITION;
-
-//     nextTrain.direction =
-//       "TO_PATNA";
-
-//     nextTrain.state =
-//       "STOPPED";
-
-//     nextTrain.stationStopRemaining =
-//       STATION_STOP_SECONDS;
-
-//     nextTrain.speed = 0;
-//   }
-
-//   /*
-//    * -----------------------------------------
-//    * PATNA
-//    * -----------------------------------------
-//    */
-
-//   if (
-//     nextTrain.direction ===
-//       "TO_PATNA" &&
-//     nextTrain.position <=
-//       PATNA_POSITION
-//   ) {
-//     nextTrain.position =
-//       PATNA_POSITION;
-
-//     nextTrain.direction =
-//       "TO_BAKHTIYARPUR";
-
-//     nextTrain.state =
-//       "STOPPED";
-
-//     nextTrain.stationStopRemaining =
-//       STATION_STOP_SECONDS;
-
-//     nextTrain.speed = 0;
-//   }
-
-//   return nextTrain;
-// }
-
-
-
-
-
-
-
-
-
-
-
-
 import type {
+  Signal,
   TrackBlock,
   Train,
 } from "../types/railway";
@@ -184,11 +17,16 @@ import {
   getDistanceToBlockBoundary,
 } from "./blocks";
 
+import {
+  getSignalForTrain,
+} from "./signals";
+
 export function updateTrainMovement(
   train: Train,
   deltaSeconds: number,
   simulationSpeed: number,
-  blocks: TrackBlock[]
+  blocks: TrackBlock[],
+  signals: Signal[]
 ): Train {
   const nextTrain: Train = {
     ...train,
@@ -243,45 +81,51 @@ export function updateTrainMovement(
       blocks
     );
 
-  /*
-   * =========================================
-   * DESTINATION
-   * =========================================
-   *
-   * If there is no next block, the train is
-   * approaching a station rather than another
-   * protected block.
-   */
-
   const hasNextBlock =
     nextBlock !== null;
 
   /*
    * =========================================
-   * BLOCK OCCUPANCY
+   * SIGNAL
    * =========================================
+   *
+   * Find the signal protecting the next
+   * block in the train's direction.
    */
 
-  const nextBlockOccupied =
-    nextBlock !== null &&
-    nextBlock.occupiedBy !== null &&
-    nextBlock.occupiedBy !==
-      nextTrain.number;
+  const nextSignal =
+    getSignalForTrain(
+      nextTrain.trackId,
+      nextTrain.direction,
+      nextBlock,
+      signals
+    );
+
+  /*
+   * =========================================
+   * SIGNAL STATE
+   * =========================================
+   *
+   * A missing signal is treated as GREEN
+   * for now so that existing behaviour is
+   * not accidentally blocked.
+   */
+
+  const signalIsRed =
+    nextSignal?.aspect === "RED";
 
   /*
    * =========================================
    * HOLDING
    * =========================================
    *
-   * Once the train has physically reached the
-   * boundary, KEEP it there until the next
-   * block becomes free.
+   * If the train has reached the protected
+   * boundary, keep it there while the signal
+   * remains RED.
    */
 
   if (nextTrain.state === "HOLDING") {
-    if (
-      nextBlockOccupied
-    ) {
+    if (signalIsRed) {
       nextTrain.speed = 0;
 
       nextTrain.position =
@@ -294,7 +138,7 @@ export function updateTrainMovement(
     }
 
     /*
-     * Block has become free.
+     * Signal is GREEN.
      * Resume movement.
      */
 
@@ -318,12 +162,15 @@ export function updateTrainMovement(
 
   /*
    * =========================================
-   * APPROACH OCCUPIED BLOCK
+   * APPROACH RED SIGNAL
    * =========================================
+   *
+   * Begin slowing down as the train approaches
+   * the boundary protected by a RED signal.
    */
 
   if (
-    nextBlockOccupied &&
+    signalIsRed &&
     hasNextBlock
   ) {
     const distanceToBoundary =
@@ -333,8 +180,8 @@ export function updateTrainMovement(
       );
 
     /*
-     * Start slowing down when 10 position
-     * units away from the protected boundary.
+     * Start slowing when 10 position units
+     * away from the protected boundary.
      */
 
     const slowingDistance = 10;
@@ -401,19 +248,15 @@ export function updateTrainMovement(
 
   /*
    * =========================================
-   * PROTECTED BLOCK BOUNDARY
+   * PROTECTED SIGNAL BOUNDARY
    * =========================================
    *
-   * IMPORTANT:
-   *
-   * We explicitly clamp the train to the
-   * boundary. This prevents the train from
-   * getting mathematically closer and closer
-   * forever without actually reaching it.
+   * Do not allow the train to cross a RED
+   * signal / protected block boundary.
    */
 
   if (
-    nextBlockOccupied &&
+    signalIsRed &&
     hasNextBlock
   ) {
     const reachedBoundary =
@@ -499,4 +342,3 @@ export function updateTrainMovement(
 
   return nextTrain;
 }
-

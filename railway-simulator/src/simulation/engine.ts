@@ -1,17 +1,24 @@
 import type {
+  Signal,
   TrackBlock,
   Train,
 } from "../types/railway";
 
 import { updateTrainMovement } from "./movement";
+
 import {
   updateBlockOccupancy,
   updateTrainBlock,
 } from "./blocks";
 
+import {
+  updateSignalAspects,
+} from "./signals";
+
 export interface SimulationState {
   trains: Train[];
   blocks: TrackBlock[];
+  signals: Signal[];
 }
 
 export function updateSimulation(
@@ -20,9 +27,12 @@ export function updateSimulation(
   simulationSpeed: number
 ): SimulationState {
   /*
+   * =========================================
    * STEP 1
+   * =========================================
    *
-   * Move every train.
+   * Move every train using the current
+   * infrastructure state.
    */
 
   let updatedTrains =
@@ -31,15 +41,17 @@ export function updateSimulation(
         train,
         deltaSeconds,
         simulationSpeed,
-        state.blocks
+        state.blocks,
+        state.signals
       )
     );
 
   /*
+   * =========================================
    * STEP 2
+   * =========================================
    *
-   * Determine which block each train
-   * is currently occupying.
+   * Recalculate each train's current block.
    */
 
   updatedTrains =
@@ -51,9 +63,11 @@ export function updateSimulation(
     );
 
   /*
+   * =========================================
    * STEP 3
+   * =========================================
    *
-   * Update block occupancy.
+   * Recalculate block occupancy.
    */
 
   const updatedBlocks =
@@ -62,8 +76,33 @@ export function updateSimulation(
       state.blocks
     );
 
+  /*
+   * =========================================
+   * STEP 4
+   * =========================================
+   *
+   * Signals depend on the NEW block
+   * occupancy.
+   *
+   * Therefore signals must be calculated
+   * AFTER trains and blocks have been updated.
+   */
+
+  const updatedSignals =
+    updateSignalAspects(
+      state.signals,
+      updatedBlocks
+    );
+
+  /*
+   * =========================================
+   * FINAL STATE
+   * =========================================
+   */
+
   return {
     trains: updatedTrains,
     blocks: updatedBlocks,
+    signals: updatedSignals,
   };
 }

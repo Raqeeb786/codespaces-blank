@@ -35,6 +35,8 @@ Basic protection against trains entering occupied blocks
 
 Multiple physical tracks
 
+Basic railway signalling
+
 The eventual goal is to evolve this into a realistic railway traffic, signalling, dispatching, and scheduling simulator.
 
 2. Current Architecture
@@ -51,6 +53,7 @@ src/
 │   ├── blocks.ts
 │   ├── trains.ts
 │   ├── tracks.ts
+│   ├── signals.ts
 │   └── constants.ts
 │
 ├── hooks/
@@ -59,7 +62,8 @@ src/
 ├── simulation/
 │   ├── blocks.ts
 │   ├── engine.ts
-│   └── movement.ts
+│   ├── movement.ts
+│   └── signals.ts
 │
 ├── types/
 │   └── railway.ts
@@ -77,7 +81,7 @@ TrackBlock
 Train
 
 
-The important distinction is that a train's position alone does not identify its physical location.
+A train's position alone does not identify its physical location.
 
 A train is identified by:
 
@@ -148,16 +152,35 @@ export interface Track {
   toStation: string;
 }
 
+Signal
 
-Current tracks:
+Signals have now been introduced.
 
-T1 — Track 1
-T2 — Track 2
+Current signal model includes:
+
+export interface Signal {
+  id: string;
+
+  trackId: string;
+
+  position: number;
+
+  direction: Direction;
+
+  protectedBlockId: string;
+
+  aspect: SignalAspect;
+}
 
 
-Both currently connect:
+Current aspects:
 
-Patna Jn ↔ Bakhtiyarpur
+type SignalAspect =
+  | "RED"
+  | "GREEN";
+
+
+Yellow/caution has not been introduced yet.
 
 5. Current Tracks and Blocks
 T1
@@ -202,20 +225,17 @@ position 25
 RUNNING
 
 12309
-
-Currently used to test the second track:
-
 Bakhtiyarpur → Patna
 T2
 position 90
 RUNNING
 
 
-This was intentionally moved from T1 to T2 to verify that track-aware occupancy works.
+The fourth train was intentionally moved to T2 to verify track-aware behavior.
 
-7. Important Track-Aware Behaviour Verified
+7. Track-Aware Behaviour Verified
 
-We have now experimentally confirmed that trains on different tracks do not incorrectly block one another.
+We have experimentally confirmed that trains on different physical tracks do not incorrectly block one another.
 
 For example:
 
@@ -238,13 +258,11 @@ T2/C3
 
 are correctly treated as different physical blocks.
 
-This is a major architectural milestone.
+This remains a major architectural milestone.
 
 8. Track-Aware Block Lookup
 
-The block lookup logic now considers the train's track.
-
-Conceptually:
+Block lookup considers both position and physical track:
 
 getBlockAtPosition(
   position,
@@ -253,7 +271,7 @@ getBlockAtPosition(
 )
 
 
-It must only consider blocks belonging to the requested track.
+Only blocks belonging to the requested track are considered.
 
 This prevents:
 
@@ -271,7 +289,7 @@ even though both cover:
 
 9. Track-Aware Movement
 
-The movement engine now obtains the current block using:
+The movement engine obtains the current block using the train's physical track:
 
 getBlockAtPosition(
   nextTrain.position,
@@ -282,11 +300,11 @@ getBlockAtPosition(
 
 The next block is therefore calculated along the train's current physical track.
 
-The train does not automatically interact with blocks belonging to another track.
+A train does not automatically interact with blocks belonging to another track.
 
 10. Track-Aware Occupancy
 
-Block occupancy is now based on:
+Block occupancy is based on:
 
 train.trackId
 +
@@ -300,7 +318,7 @@ Each block has:
 occupiedBy: string | null;
 
 
-and only a train physically located on that block can occupy it.
+Only a train physically located on that block can occupy it.
 
 11. Frontend
 
@@ -317,6 +335,7 @@ T1   ═════════════════════════
 
 T2   ═══════════════════════════════════════════════════════════
        C1       C2       C3       C4       C5
+                       🚆
 
 
 The train's vertical SVG position is determined by:
@@ -326,21 +345,23 @@ train.trackId
 
 Therefore trains visually appear on their actual physical track.
 
-The frontend now receives:
+The frontend receives live simulation data:
 
 <RailwayView
   tracks={INITIAL_TRACKS}
-  trains={simulation.trains}
-  blocks={simulation.blocks}
+  trains={trains}
+  blocks={blocks}
+  signals={signals}
 />
 
 12. Current Simulation State Architecture
 
-The simulation continues to use a single combined state:
+The simulation uses a single combined state:
 
 interface SimulationState {
   trains: Train[];
   blocks: TrackBlock[];
+  signals: Signal[];
 }
 
 
@@ -354,10 +375,14 @@ Update train block
         ↓
 Update block occupancy
         ↓
+Update signal aspects
+        ↓
 New Simulation State
 
 
 This preserves the earlier fix where trains and blocks were accidentally updated independently.
+
+The simulation engine remains responsible for producing one consistent state per simulation tick.
 
 13. Current Movement Protection
 
@@ -381,7 +406,141 @@ This behavior is intentionally simple for the MVP.
 
 We are not currently trying to perfectly model braking curves or railway signalling physics.
 
-14. Known Simplifications
+14. Signals — IMPLEMENTED
+
+The basic signalling milestone has now been reached.
+
+Signals are represented explicitly and are associated with:
+
+track
++
+direction
++
+position
++
+protected block
++
+aspect
+
+
+Signals have been created for both tracks and both directions.
+
+Conceptually:
+
+T1 → B1 → B2 → B3 → B4 → B5
+
+     🚦    🚦    🚦    🚦    🚦
+
+
+and:
+
+T2 → C1 → C2 → C3 → C4 → C5
+
+     🚦    🚦    🚦    🚦    🚦
+
+
+There are separate directional signals for movements toward Patna and Bakhtiyarpur.
+
+15. Current Signal Logic
+
+The current signal engine determines signal aspect from the occupancy of its protected block.
+
+Conceptually:
+
+Protected block occupied
+        ↓
+      RED
+
+
+and:
+
+Protected block free
+        ↓
+      GREEN
+
+
+The signal engine contains logic equivalent to:
+
+occupied
+  ? "RED"
+  : "GREEN"
+
+
+This is intentionally simple.
+
+It is not yet intended to model the complete railway signalling system.
+
+16. Signal Visualization — VERIFIED
+
+Signals are now visible in the frontend.
+
+More importantly, they have been tested dynamically.
+
+When a protected block becomes occupied:
+
+GREEN
+  ↓
+RED
+
+
+When the block becomes free:
+
+RED
+  ↓
+GREEN
+
+
+The change occurs in real time during the simulation.
+
+Therefore the signalling system is not merely static UI decoration.
+
+It is connected to live simulation state.
+
+This milestone has been successfully verified.
+
+17. Important Clarification About Signals
+
+The signal system does not yet replace the existing block-protection logic.
+
+The movement engine currently knows directly about the next block:
+
+nextBlock.occupiedBy
+
+
+and uses that information to:
+
+slow
+  ↓
+reach boundary
+  ↓
+HOLD
+
+
+At the same time, the signal system observes the same block occupancy and changes the signal:
+
+block occupied
+      ↓
+    RED
+
+
+Therefore the current architecture is:
+
+                 BLOCK OCCUPANCY
+                       │
+             ┌─────────┴─────────┐
+             ↓                   ↓
+       MOVEMENT ENGINE       SIGNAL ENGINE
+             ↓                   ↓
+        SLOW / HOLD          RED / GREEN
+
+
+This is intentional.
+
+We should not replace the working movement-protection system merely for the sake of routing movement through signals.
+
+The next signalling milestone should add useful signalling behavior rather than duplicate existing safety logic.
+
+18. Current Simplifications
 
 The following are intentionally not fully realistic yet:
 
@@ -391,7 +550,7 @@ Acceleration curves
 
 Exact railway signal behavior
 
-Real railway signalling systems
+Multi-aspect signalling
 
 Movement authority
 
@@ -413,11 +572,11 @@ Conflict resolution
 
 Optimization
 
-The current purpose is to establish a correct physical infrastructure model first.
+The current purpose is to establish a correct physical infrastructure model and progressively add signalling intelligence.
 
-15. Important Architectural Principle
+19. Important Architectural Principle
 
-The simulator should evolve in this order:
+The simulator should evolve approximately in this direction:
 
 PHYSICAL INFRASTRUCTURE
         ↓
@@ -440,15 +599,22 @@ SCHEDULING
 OPTIMIZATION
 
 
-We have now completed the first important infrastructure expansion:
+We have now completed:
 
 Tracks
   ↓
 Track-aware Blocks
   ↓
 Track-aware Trains
+  ↓
+Basic Signals
+  ↓
+Live Signal State
 
-16. What We Should NOT Do Yet
+
+The important point is that the signalling layer has been added without breaking the existing track-aware movement model.
+
+20. What We Should NOT Do Yet
 
 Do not jump directly into:
 
@@ -464,22 +630,112 @@ complex junction routing
 
 large-scale scheduling
 
-The infrastructure and signalling concepts should become stable first.
+Do not redesign the existing movement engine unnecessarily.
 
-17. Current Checkpoint
+The current block protection and track-aware movement are working and should remain intact.
 
-The current system can now represent:
+21. NEXT MAJOR MILESTONE — SMARTER SIGNALLING
+
+The next major milestone should not be "add signals" because that milestone is already complete.
+
+Instead:
+
+MVP 04 — Multi-Aspect / Signal-Aware Railway Control
+
+The next stage should build on the current signal system.
+
+First, introduce:
+
+RED
+YELLOW
+GREEN
+
+
+Then make signal aspects depend on more than just the immediately protected block.
+
+For example:
+
+Next block occupied
+        ↓
+      RED
+
+Next block free
+but following block occupied
+        ↓
+      YELLOW
+
+Next block free
+and following block free
+        ↓
+      GREEN
+
+
+This gives the signal system actual predictive meaning.
+
+Eventually the architecture can evolve toward:
+
+Train
+  ↓
+Signal
+  ↓
+Movement Authority
+  ↓
+Protected Block(s)
+  ↓
+Train Movement
+
+
+However, this should be introduced incrementally.
+
+The existing:
+
+nextBlock.occupiedBy
+
+
+movement protection should remain intact until the new signal-based authority system has been properly tested.
+
+22. Recommended Next Implementation Order
+
+The next work should proceed in this order:
+
+Add YELLOW to SignalAspect.
+
+Keep the existing RED/GREEN behavior working.
+
+Make signals inspect the next protected block(s).
+
+Introduce a simple RED/YELLOW/GREEN aspect calculation.
+
+Improve the frontend signal rendering to clearly distinguish all aspects.
+
+Test a train following another train on the same track.
+
+Verify:
+
+RED near an occupied block
+
+YELLOW before a RED
+
+GREEN when the route ahead is clear
+
+Only after that, consider using signal state as an additional input to movement control.
+
+Do not remove the current block-based slowing/holding behavior during these steps.
+
+23. Current Checkpoint
+
+The system can now represent:
 
                     PATNA JN
 
 T1  ═════════════════════════════════════
-       B1 B2 B3 B4 B5
+       🚦 B1 🚦 B2 🚦 B3 🚦 B4 🚦 B5
              🚆
 
 
 T2  ═════════════════════════════════════
-       C1 C2 C3 C4 C5
-                       🚆
+       🚦 C1 🚦 C2 🚦 C3 🚦 C4 🚦 C5
+                         🚆
 
                     BAKHTIYARPUR
 
@@ -494,92 +750,36 @@ does not conflict with:
 T2 / position 50
 
 
-This behavior has been tested and confirmed.
+and this behavior has been tested and confirmed.
 
-18. NEXT MAJOR MILESTONE — SIGNALS
-
-The next major milestone is to introduce railway signals.
-
-Instead of having the movement engine directly think only in terms of:
-
-nextBlock.occupiedBy
-
-
-we will begin moving toward:
-
-Train
-  ↓
-Signal
-  ↓
-Movement Authority
-  ↓
-Protected Block(s)
-  ↓
-Train Movement
-
-
-The first version does not need to be complicated.
-
-We can introduce a simple signal model such as:
-
-type SignalAspect =
-  | "RED"
-  | "YELLOW"
-  | "GREEN";
-
-
-and:
-
-interface Signal {
-  id: string;
-
-  trackId: string;
-
-  position: number;
-
-  aspect: SignalAspect;
-}
-
-
-Initially, signals can simply protect blocks.
+Signals are now also present on the physical tracks and respond to live block occupancy.
 
 For example:
 
-T1
-
-Patna
-  │
-  🚦       🚦       🚦       🚦
-  │        │        │        │
- B1       B2       B3       B4       B5
+Train enters B3
+      ↓
+B3.occupiedBy = train
+      ↓
+S_T1_B3_UP = RED
 
 
-The first objective will be:
+When the train leaves B3:
 
-RED
- ↓
-Train cannot enter protected block
-
-GREEN
- ↓
-Train may proceed
+B3.occupiedBy = null
+      ↓
+S_T1_B3_UP = GREEN
 
 
-Then we can later introduce:
+This has been tested successfully in the frontend.
 
-YELLOW
- ↓
-Proceed with caution / prepare to stop
-
-
-and eventually multiple aspects and movement authority.
-
-19. Exact Point To Resume
+24. Exact Point To Resume
 
 When continuing this project, start with:
 
-"The track-aware multi-track model is working. T1 and T2 are visible, trains can operate on separate tracks, and trains on different tracks do not conflict. The next major milestone is to introduce a basic Signal model and connect signals to block protection. Let's start by reviewing the current railway.ts, blocks.ts, and movement.ts before implementing signals."
+"The track-aware multi-track model is working and the basic signalling milestone is complete. T1 and T2 are visible, trains can operate independently on separate tracks, block occupancy is track-aware, and signals dynamically change between RED and GREEN based on protected-block occupancy. The next major milestone is smarter multi-aspect signalling. We should add YELLOW and make signals consider multiple blocks ahead, while preserving the existing block-based slowing and holding logic."
 
 Do not redesign the entire simulation.
 
-Start with the smallest useful signal system and preserve the currently working track-aware movement.
+Do not replace the current movement engine yet.
+
+Build incrementally on the working track, block, occupancy, movement, and basic signal architecture.
